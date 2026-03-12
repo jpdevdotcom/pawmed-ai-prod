@@ -1,0 +1,38 @@
+name: Sync Fork From Upstream
+
+on:
+  repository_dispatch:
+    types: [sync-upstream]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+      - name: Add upstream
+        run: git remote add upstream https://github.com/Zeff01/PawmedAI.git
+
+      - name: Fetch upstream
+        run: git fetch upstream
+
+      - name: Sync upstream changes
+        run: |
+          git checkout main
+          if [ "$(git rev-list HEAD..upstream/main --count)" -gt 0 ]; then
+            git merge upstream/main --no-edit
+          else
+            echo "Fork already up to date"
+          fi
+
+      - name: Push changes to fork
+        run: git push origin main
