@@ -37,3 +37,31 @@ jobs:
 
       - name: Push changes to fork
         run: git push https://x-access-token:${{ secrets.FORK_SYNC_TOKEN }}@github.com/jpdevdotcom/pawmed-ai-prod.git main
+
+      - name: Get latest tag and bump patch version
+        id: version
+        run: |
+          git fetch --tags
+          LATEST=$(git tag -l "v*.*.*" | sort -V | tail -n1)
+          if [ -z "$LATEST" ]; then
+            NEW_TAG="v1.0.0"
+          else
+            MAJOR=$(echo $LATEST | cut -d. -f1 | tr -d 'v')
+            MINOR=$(echo $LATEST | cut -d. -f2)
+            PATCH=$(echo $LATEST | cut -d. -f3)
+            NEW_TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push https://x-access-token:${{ secrets.FORK_SYNC_TOKEN }}@github.com/jpdevdotcom/pawmed-ai-prod.git ${{ steps.version.outputs.tag }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Release ${{ steps.version.outputs.tag }}"
+          body: "Automated release synced from upstream PawmedAI."
+          token: ${{ secrets.FORK_SYNC_TOKEN }}
